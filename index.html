@@ -22,9 +22,11 @@
   --bg:#f4f6f5; --card:#ffffff; --border:#e0e4e2; --text:#1c2422; --sub:#6b7570;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+html{background:var(--card);}
+html,body{margin:0;padding:0;height:100%;color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
   position:fixed; inset:0; overscroll-behavior:none;}
+body{background:var(--bg);}
 #app{display:flex;flex-direction:column;height:100%;}
 header.topbar{
   padding:calc(14px + env(safe-area-inset-top)) 16px 10px; background:var(--card); border-bottom:1px solid var(--border);
@@ -115,7 +117,7 @@ input:focus, select:focus, textarea:focus{outline:2px solid var(--main); border-
 .rule-card .body, .store-card .memo{font-size:13px; color:var(--sub); margin-top:4px; white-space:pre-wrap;}
 .rule-card .actions, .store-card .actions{display:flex; gap:8px; margin-top:8px;}
 
-nav.tabbar{position:absolute; left:0; right:0; bottom:0; display:flex; background:var(--card);
+nav.tabbar{position:fixed; left:0; right:0; bottom:0; display:flex; background:var(--card);
   border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom); z-index:10;}
 nav.tabbar button{flex:1; background:none; border:none; padding:9px 0 6px; font-size:11px; color:var(--sub); font-weight:600;}
 nav.tabbar button .ic{display:block; font-size:21px; margin-bottom:2px;}
@@ -536,11 +538,8 @@ async function startScan(){
 function describeCameraError(e){
   const name = (e && e.name) || '';
   const rawMessage = (typeof e === 'string') ? e : ((e && e.message) || '');
-  const standaloneHint = (window.navigator.standalone)
-    ? '（ホーム画面から起動中の場合、Safariで直接開くと使えることがあります）'
-    : '';
   if(name === 'NotAllowedError' || name === 'PermissionDeniedError'){
-    return 'カメラの使用が許可されていません。iPhoneの「設定」→「Safari」→「カメラ」を確認してください。' + standaloneHint;
+    return 'カメラの使用がブロックされています。Safariでこのページを開き、アドレスバー左の「あ」または「Aa」→「Webサイトの設定」→「カメラ」を「許可」に変更してから、再度お試しください。';
   }
   if(name === 'NotFoundError' || name === 'DevicesNotFoundError'){
     return 'カメラが見つかりませんでした。手入力してください。';
@@ -551,7 +550,7 @@ function describeCameraError(e){
   if(name === 'OverconstrainedError'){
     return 'カメラの起動条件に問題がありました。手入力してください。';
   }
-  return 'カメラを起動できませんでした（' + (name || rawMessage || '不明なエラー') + '）。手入力してください。' + standaloneHint;
+  return 'カメラを起動できませんでした（' + (name || rawMessage || '不明なエラー') + '）。手入力してください。';
 }
 function stopScan(){
   if(scanRunning && html5QrCode){
