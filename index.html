@@ -26,7 +26,7 @@ html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;}
 #app{display:flex;flex-direction:column;min-height:100dvh;}
 header.topbar{
-  padding:14px 16px 10px; background:var(--card); border-bottom:1px solid var(--border);
+  padding:calc(14px + env(safe-area-inset-top)) 16px 10px; background:var(--card); border-bottom:1px solid var(--border);
   position:sticky; top:0; z-index:5;
 }
 header.topbar h1{font-size:17px; margin:0; font-weight:700; text-align:center;}
