@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>仕入れ相棒</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="仕入れ相棒">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<!-- バーコードスキャン用ライブラリ（iOS Safariで使うために追加。スキャン機能だけネット接続が必要） -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  --green:#1f8a4c; --green-bg:#e5f6ea;
+  --yellow:#a97b00; --yellow-bg:#fff6dc;
+  --red:#c62828; --red-bg:#fdeaea;
+  --main:#158a6b; --main-dark:#0f6c53;
+  --bg:#f4f6f5; --card:#ffffff; --border:#e0e4e2; --text:#1c2422; --sub:#6b7570;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;}
+#app{display:flex;flex-direction:column;min-height:100dvh;}
+header.topbar{
+  padding:14px 16px 10px; background:var(--card); border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:5;
+}
+header.topbar h1{font-size:17px; margin:0; font-weight:700; text-align:center;}
+main{flex:1; overflow-y:auto; padding:12px 14px 90px;}
+.screen{display:none;}
+.screen.active{display:block;}
+
+label{display:block; font-size:13px; color:var(--sub); margin:14px 0 4px; font-weight:600;}
+label:first-of-type{margin-top:4px;}
+input[type=text], input[type=number], input[type=search], select, textarea{
+  width:100%; padding:12px 12px; font-size:17px; border:1px solid var(--border);
+  border-radius:10px; background:var(--card); color:var(--text);
+}
+textarea{resize:vertical; min-height:70px;}
+input:focus, select:focus, textarea:focus{outline:2px solid var(--main); border-color:var(--main);}
+
+.mode-toggle{display:flex; gap:8px; margin-bottom:6px;}
+.mode-btn{flex:1; padding:12px 6px; border-radius:10px; border:2px solid var(--border);
+  background:var(--card); font-size:15px; font-weight:700; color:var(--sub);}
+.mode-btn.active{border-color:var(--main); color:var(--main); background:#eaf7f3;}
+
+.primary-btn{width:100%; padding:16px; font-size:17px; font-weight:700; color:#fff;
+  background:var(--main); border:none; border-radius:14px; margin-top:18px;}
+.primary-btn:active{background:var(--main-dark);}
+.big-add{font-size:19px; padding:20px;}
+.secondary-btn{width:100%; padding:13px; font-size:15px; font-weight:700; color:var(--main);
+  background:#eaf7f3; border:1px solid var(--main); border-radius:12px; margin-top:10px;}
+.secondary-btn.small{width:auto; padding:8px 14px; font-size:13px; margin:0;}
+.danger-btn{color:#fff; background:var(--red); border:none; border-radius:10px; padding:10px 14px; font-weight:700; font-size:14px;}
+.ghost-btn{background:transparent; border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:14px; color:var(--sub); font-weight:600;}
+
+.mode-fields[hidden]{display:none;}
+
+.jan-row{display:flex; gap:8px;}
+.jan-row input{flex:1;}
+.jan-row button{padding:0 14px; border-radius:10px; border:1px solid var(--main); background:#eaf7f3; color:var(--main); font-weight:700; font-size:14px; white-space:nowrap;}
+.notice{margin-top:8px; font-size:13px; color:var(--sub); background:#fff6dc; padding:8px 10px; border-radius:8px;}
+
+.section-label{font-size:13px; color:var(--sub); font-weight:700; margin:18px 0 8px;}
+.link-grid{display:flex; flex-wrap:wrap; gap:8px;}
+.link-chip{padding:10px 14px; border-radius:20px; background:#eef2f0; color:var(--main-dark);
+  font-size:13px; font-weight:700; border:1px solid var(--border); text-decoration:none; display:inline-block;}
+
+.history-warning{margin:10px 0; padding:10px 12px; border-radius:10px; background:#fff6dc; color:#7a5900; font-size:13px; font-weight:600; border:1px solid #f0d98c;}
+
+.result-box{margin-top:20px; border-radius:16px; overflow:hidden; border:1px solid var(--border);}
+.result-judgment{padding:26px 10px; text-align:center; font-size:30px; font-weight:900;}
+.result-judgment.ok{background:var(--green-bg); color:var(--green);}
+.result-judgment.soso{background:var(--yellow-bg); color:var(--yellow);}
+.result-judgment.ng{background:var(--red-bg); color:var(--red);}
+.result-detail{padding:14px 16px; background:var(--card); font-size:14px; line-height:1.9;}
+.result-detail b{font-size:15px;}
+
+.memo-list, .history-list{display:flex; flex-direction:column; gap:10px; margin-top:14px;}
+.memo-card, .history-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px;}
+.memo-card.judged{opacity:.5;}
+.memo-card .row, .history-card .row{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+.memo-card .name, .history-card .name{font-size:16px; font-weight:700; flex:1;}
+.memo-card .price{font-size:14px; color:var(--sub); margin-top:4px;}
+.memo-thumb{width:56px; height:56px; border-radius:8px; object-fit:cover; margin-top:6px;}
+.tag{display:inline-block; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px; margin-right:6px;}
+.tag.used{background:#eef2f0; color:var(--sub);}
+.tag.new{background:#eaf3ff; color:#1a5fb4;}
+.tag.ok{background:var(--green-bg); color:var(--green);}
+.tag.soso{background:var(--yellow-bg); color:var(--yellow);}
+.tag.ng{background:var(--red-bg); color:var(--red);}
+.memo-actions, .history-card .meta{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+.history-card .meta{font-size:12px; color:var(--sub);}
+.mini-btn{padding:8px 12px; font-size:13px; font-weight:700; border-radius:9px; border:1px solid var(--main); color:var(--main); background:#eaf7f3;}
+.mini-btn.del{border-color:var(--red); color:var(--red); background:var(--red-bg);}
+
+.add-form{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:12px;}
+.add-form[hidden]{display:none;}
+.photo-btn{display:inline-block; padding:10px 14px; border-radius:10px; border:1px solid var(--border); font-size:13px; font-weight:700; color:var(--sub); background:#f2f4f3;}
+.form-actions{display:flex; gap:8px; margin-top:10px;}
+.form-actions button{flex:1;}
+
+.settings-block{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
+.settings-block h2{font-size:15px; margin:0 0 8px;}
+.shipping-row{display:flex; align-items:center; gap:8px; margin-top:8px;}
+.shipping-row span{flex:1; font-size:14px;}
+.shipping-row input{width:100px;}
+.rule-card, .store-card{border:1px solid var(--border); border-radius:10px; padding:10px; margin-top:8px;}
+.rule-card .genre, .store-card .sname{font-weight:700; font-size:14px;}
+.rule-card .body, .store-card .memo{font-size:13px; color:var(--sub); margin-top:4px; white-space:pre-wrap;}
+.rule-card .actions, .store-card .actions{display:flex; gap:8px; margin-top:8px;}
+
+nav.tabbar{position:fixed; left:0; right:0; bottom:0; display:flex; background:var(--card);
+  border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom); z-index:10;}
+nav.tabbar button{flex:1; background:none; border:none; padding:9px 0 6px; font-size:11px; color:var(--sub); font-weight:600;}
+nav.tabbar button .ic{display:block; font-size:21px; margin-bottom:2px;}
+nav.tabbar button.active{color:var(--main);}
+
+.modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; z-index:20;}
+.modal-overlay[hidden]{display:none;}
+.modal-box{background:var(--card); width:100%; max-height:88vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:16px 16px calc(20px + env(safe-area-inset-bottom));}
+.modal-box h2{margin:0 0 12px; font-size:17px;}
+.close-row{text-align:right; margin-top:14px;}
+
+.scan-modal{position:fixed; inset:0; background:#000; z-index:30; display:flex; flex-direction:column;}
+.scan-modal[hidden]{display:none;}
+.scan-modal video{flex:1; width:100%; object-fit:cover;}
+.scan-modal .scan-bar{padding:14px; padding-bottom:calc(14px + env(safe-area-inset-bottom)); background:#111;}
+.scan-modal .scan-bar button{width:100%; padding:14px; border-radius:12px; border:none; background:#333; color:#fff; font-weight:700;}
+.scan-hint{color:#fff; text-align:center; padding:10px; font-size:13px;}
+
+#backupArea{min-height:120px; font-size:12px; margin-top:10px;}
+#restoreArea{min-height:100px; font-size:12px;}
+small.hint{color:var(--sub); font-size:12px; display:block; margin-top:6px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar"><h1 id="screenTitle">仕入れ相棒</h1></header>
+  <main>
+
+    <!-- 画面1: 判定 -->
+    <section id="screen-judge" class="screen active">
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="used">中古モード</button>
+        <button class="mode-btn" data-mode="new">新品モード</button>
+      </div>
+
+      <div id="historyWarning" class="history-warning" hidden></div>
+
+      <label>商品名・型番</label>
+      <input type="text" id="productName" placeholder="例）iPhone 13 128GB">
+
+      <label>仕入れ価格（円）</label>
+      <input type="number" id="purchasePrice" inputmode="numeric" placeholder="例）3000">
+
+      <label>想定売価（円）</label>
+      <input type="number" id="sellPrice" inputmode="numeric" placeholder="相場を見て入力">
+
+      <div id="usedFields" class="mode-fields">
+        <label>状態メモ（任意）</label>
+        <input type="text" id="conditionMemo" placeholder="例）箱なし、傷あり、付属品欠品">
+      </div>
+
+      <div id="newFields" class="mode-fields" hidden>
+        <label>個数</label>
+        <input type="number" id="quantity" inputmode="numeric" value="1" min="1">
+
+        <label>ポイント還元率（%）</label>
+        <input type="number" id="pointRate" inputmode="numeric" value="0">
+
+        <label>JANコード</label>
+        <div class="jan-row">
+          <input type="text" id="janCode" inputmode="numeric" placeholder="バーコードの数字">
+          <button type="button" id="scanBtn">📷 スキャン</button>
+        </div>
+        <div id="scanNotice" class="notice" hidden></div>
+      </div>
+
+      <label>送料カテゴリ</label>
+      <select id="shippingCategory"></select>
+
+      <div class="section-label">相場を調べる（タップで別タブが開きます）</div>
+      <div id="searchLinks" class="link-grid"></div>
+
+      <button id="calcBtn" class="primary-btn">判定する</button>
+
+      <div id="resultBox" class="result-box" hidden>
+        <div id="resultJudgment" class="result-judgment"></div>
+        <div id="resultDetail" class="result-detail"></div>
+        <div style="padding:0 16px 16px; background:var(--card);">
+          <label>店舗名</label>
+          <select id="storeSelect"><option value="">（未選択）</option></select>
+          <button id="saveHistoryBtn" class="secondary-btn">履歴に保存</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 画面2: クイックメモ -->
+    <section id="screen-memo" class="screen">
+      <button id="addMemoBtn" class="primary-btn big-add">＋ メモ追加</button>
+
+      <div id="memoForm" class="add-form" hidden>
+        <label style="margin-top:0;">商品名・型番</label>
+        <textarea id="memoName" style="font-size:19px;" placeholder="音声入力もどうぞ"></textarea>
+        <label>店頭価格（円）</label>
+        <input type="number" id="memoPrice" inputmode="numeric">
+        <label>写真（任意）</label>
+        <label class="photo-btn" for="memoPhotoInput">📷 写真を撮る／選ぶ</label>
+        <input type="file" id="memoPhotoInput" accept="image/*" capture="environment" style="display:none;">
+        <div id="memoPhotoPreviewWrap"></div>
+        <div class="form-actions">
+          <button id="memoCancelBtn" class="ghost-btn">キャンセル</button>
+          <button id="memoSaveBtn" class="secondary-btn">保存</button>
+        </div>
+      </div>
+
+      <div id="memoList" class="memo-list"></div>
+    </section>
+
+    <!-- 画面3: 履歴 -->
+    <section id="screen-history" class="screen">
+      <input type="search" id="historySearch" placeholder="商品名・型番で検索">
+      <div style="margin-top:10px; text-align:right;">
+        <button id="exportCsvBtn" class="secondary-btn small">CSVとしてコピー</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+
+    <!-- 画面4: マイ基準・設定 -->
+    <section id="screen-settings" class="screen">
+      <div class="settings-block">
+        <h2>マイ仕入れ基準リスト</h2>
+        <div id="rulesList"></div>
+        <button id="addRuleBtn" class="secondary-btn">＋ 基準を追加</button>
+      </div>
+
+      <div class="settings-block">
+        <h2>店舗メモ</h2>
+        <div id="storesList"></div>
+        <button id="addStoreBtn" class="secondary-btn">＋ 店舗を追加</button>
+      </div>
+
+      <div class="settings-block">
+        <h2>送料設定</h2>
+        <div id="shippingSettings"></div>
+      </div>
+
+      <div class="settings-block">
+        <h2>判定しきい値</h2>
+        <label>「仕入れOK」：利益額（円）以上</label>
+        <input type="number" id="thresholdOkProfit">
+        <label>「仕入れOK」：利益率（%）以上</label>
+        <input type="number" id="thresholdOkRate">
+        <label>「微妙」：利益額（円）以上</label>
+        <input type="number" id="thresholdSokuProfit">
+        <small class="hint">両方の条件を満たすと緑（OK）、利益額だけ満たすと黄（微妙）、どちらも満たさないと赤（見送り）になります。</small>
+      </div>
+
+      <div class="settings-block">
+        <h2>メルカリ手数料率（%）</h2>
+        <input type="number" id="feeRateInput">
+      </div>
+
+      <div class="settings-block">
+        <h2>自分の名前（夫婦で共有する場合）</h2>
+        <input type="text" id="myNameInput" placeholder="例）たろう">
+        <small class="hint">履歴を保存するときに「記録者」として自動で記録されます。奥さんの端末にも別の名前を入れてもらうと、あとで合体したときに誰が見つけた商品か分かります。</small>
+      </div>
+
+      <div class="settings-block">
+        <h2>データのバックアップ・復元</h2>
+        <button id="backupBtn" class="secondary-btn">バックアップ用テキストを表示</button>
+        <textarea id="backupArea" readonly hidden></textarea>
+        <label>復元・合体（貼り付けてください）</label>
+        <textarea id="restoreArea" placeholder="バックアップ用テキストをここに貼り付け"></textarea>
+        <button id="mergeBtn" class="secondary-btn">このテキストを取り込んで合体する</button>
+        <small class="hint">今のデータは消さずに、貼り付けたテキストの中身を追加します。夫婦でデータをまとめたいときはこちらを使ってください（同じ記録は重複して増えません）。</small>
+        <button id="restoreBtn" class="secondary-btn" style="margin-top:16px;">このテキストで完全に上書き復元する</button>
+        <small class="hint">今のデータを消して、貼り付けたテキストだけに置き換えます。機種変更のときはこちらを使ってください。</small>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-screen="judge"><span class="ic">🔍</span>判定</button>
+    <button class="tab-btn" data-screen="memo"><span class="ic">📝</span>メモ</button>
+    <button class="tab-btn" data-screen="history"><span class="ic">📋</span>履歴</button>
+    <button class="tab-btn" data-screen="settings"><span class="ic">⚙️</span>設定</button>
+  </nav>
+</div>
+
+<div id="modalOverlay" class="modal-overlay" hidden>
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<div id="scanModal" class="scan-modal" hidden>
+  <div id="scanRegion" style="flex:1; width:100%;"></div>
+  <div class="scan-hint">バーコードにカメラを向けてください</div>
+  <div class="scan-bar"><button id="scanCancelBtn">キャンセル</button></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ==================== データ層（あとでGAS連携に差し替えやすいよう関数化） ==================== */
+const STORAGE_KEYS = {
+  history: 'sedori_history',
+  quickMemos: 'sedori_quickMemos',
+  myRules: 'sedori_myRules',
+  stores: 'sedori_stores',
+  settings: 'sedori_settings'
+};
+
+function loadJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+function saveJSON(key, value){
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getHistory(){ return loadJSON(STORAGE_KEYS.history, []); }
+function saveHistory(arr){ saveJSON(STORAGE_KEYS.history, arr); }
+
+function getQuickMemos(){ return loadJSON(STORAGE_KEYS.quickMemos, []); }
+function saveQuickMemos(arr){ saveJSON(STORAGE_KEYS.quickMemos, arr); }
+
+function getMyRules(){ return loadJSON(STORAGE_KEYS.myRules, []); }
+function saveMyRules(arr){ saveJSON(STORAGE_KEYS.myRules, arr); }
+
+function getStores(){ return loadJSON(STORAGE_KEYS.stores, []); }
+function saveStores(arr){ saveJSON(STORAGE_KEYS.stores, arr); }
+
+const DEFAULT_SETTINGS = {
+  feeRate: 10,
+  myName: '',
+  shippingCategories: [
+    { id:'yupacket_post',  name:'ゆうパケットポスト（ゆうゆう）',     fee:220 },
+    { id:'yupacket_mini',  name:'ゆうパケットポストmini（ゆうゆう）', fee:180 },
+    { id:'necopos',        name:'ネコポス（らくらく）',            fee:210 },
+    { id:'yupacket',       name:'ゆうパケット（ゆうゆう）',          fee:230 },
+    { id:'compact',        name:'宅急便コンパクト（らくらく）',       fee:520 },
+    { id:'yupacket_plus',  name:'ゆうパケットプラス（ゆうゆう）',     fee:520 },
+    { id:'takkyubin60',    name:'宅急便60（らくらく）',             fee:750 },
+    { id:'yupack60',       name:'ゆうパック60（ゆうゆう）',          fee:750 },
+    { id:'takkyubin100',   name:'宅急便100（らくらく）',            fee:1050 },
+    { id:'yupack100',      name:'ゆうパック100（ゆうゆう）',         fee:1070 },
+    { id:'takkyubin140',   name:'宅急便140（らくらく）',            fee:1450 },
+    { id:'takkyubin200',   name:'宅急便200（らくらく）',            fee:2500 }
+  ],
+  thresholds: { okProfit:500, okRate:20, sokuProfit:200 }
+};
+function getSettings(){
+  const s = loadJSON(STORAGE_KEYS.settings, null);
+  if(!s) return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  if(!s.shippingCategories) s.shippingCategories = DEFAULT_SETTINGS.shippingCategories;
+  if(!s.thresholds) s.thresholds = DEFAULT_SETTINGS.thresholds;
+  if(typeof s.feeRate !== 'number') s.feeRate = 10;
+  if(typeof s.myName !== 'string') s.myName = '';
+  return s;
+}
+function saveSettings(s){ saveJSON(STORAGE_KEYS.settings, s); }
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function fmtYen(n){ return Math.round(n).toLocaleString('ja-JP') + '円'; }
+function fmtDate(iso){
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+
+/* ==================== 画面切り替え ==================== */
+const screens = { judge:'screen-judge', memo:'screen-memo', history:'screen-history', settings:'screen-settings' };
+const titles = { judge:'判定', memo:'クイックメモ', history:'履歴', settings:'マイ基準・設定' };
+function showScreen(key){
+  Object.values(screens).forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(screens[key]).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.screen===key));
+  document.getElementById('screenTitle').textContent = titles[key];
+  if(key==='memo') renderMemoList();
+  if(key==='history') renderHistoryList();
+  if(key==='settings') renderSettingsScreen();
+}
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> showScreen(btn.dataset.screen));
+});
+
+/* ==================== モーダル共通 ==================== */
+const modalOverlay = document.getElementById('modalOverlay');
+const modalBox = document.getElementById('modalBox');
+function openModal(html){
+  modalBox.innerHTML = html;
+  modalOverlay.hidden = false;
+}
+function closeModal(){
+  modalOverlay.hidden = true;
+  modalBox.innerHTML = '';
+}
+modalOverlay.addEventListener('click', (e)=>{ if(e.target===modalOverlay) closeModal(); });
+
+/* ==================== 画面1: 判定 ==================== */
+let currentMode = 'used'; // used | new
+let pendingMemoId = null; // クイックメモから引き継いだ場合の元メモID
+
+const productNameEl = document.getElementById('productName');
+const purchasePriceEl = document.getElementById('purchasePrice');
+const sellPriceEl = document.getElementById('sellPrice');
+const conditionMemoEl = document.getElementById('conditionMemo');
+const quantityEl = document.getElementById('quantity');
+const pointRateEl = document.getElementById('pointRate');
+const janCodeEl = document.getElementById('janCode');
+const shippingCategoryEl = document.getElementById('shippingCategory');
+const historyWarningEl = document.getElementById('historyWarning');
+
+document.querySelectorAll('.mode-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    currentMode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('usedFields').hidden = currentMode !== 'used';
+    document.getElementById('newFields').hidden = currentMode !== 'new';
+    renderSearchLinks();
+    document.getElementById('resultBox').hidden = true;
+  });
+});
+
+function fillShippingOptions(){
+  const settings = getSettings();
+  shippingCategoryEl.innerHTML = settings.shippingCategories.map(c=>
+    `<option value="${c.id}">${c.name}（${c.fee}円）</option>`
+  ).join('');
+}
+
+function renderSearchLinks(){
+  const kw = (productNameEl.value || '').trim();
+  const jan = (janCodeEl.value || '').trim();
+  const wrap = document.getElementById('searchLinks');
+  if(!kw && !jan){ wrap.innerHTML = '<small class="hint">商品名・型番を入力するとリンクが出ます</small>'; return; }
+  const q = encodeURIComponent(kw || jan);
+  let links = [];
+  if(currentMode === 'used'){
+    links = [
+      { label:'メルカリ(売切)', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out` },
+      { label:'オークファン', url:`https://aucfan.com/search1/q-${q}/` },
+      { label:'Yahoo!フリマ', url:`https://paypayfleamarket.yahoo.co.jp/search/${q}` },
+      { label:'Google(買取価格)', url:`https://www.google.com/search?q=${encodeURIComponent((kw||jan)+' 買取価格')}` }
+    ];
+  } else {
+    const janQ = jan ? encodeURIComponent(jan) : q;
+    links = [
+      { label:'メルカリ(売切)', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out` },
+      { label:'Amazon', url:`https://www.amazon.co.jp/s?k=${q}` },
+      { label:'Google(最安値)', url:`https://www.google.com/search?q=${encodeURIComponent((jan||kw)+' 最安値')}` }
+    ];
+  }
+  wrap.innerHTML = links.map(l => `<a class="link-chip" href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`).join('');
+}
+productNameEl.addEventListener('input', ()=>{ renderSearchLinks(); checkHistoryWarning(); });
+janCodeEl && janCodeEl.addEventListener('input', renderSearchLinks);
+
+function checkHistoryWarning(){
+  const kw = productNameEl.value.trim();
+  if(!kw){ historyWarningEl.hidden = true; return; }
+  const hist = getHistory();
+  const match = hist.filter(h => h.name && h.name.includes(kw)).sort((a,b)=> new Date(b.date)-new Date(a.date))[0];
+  if(match){
+    const judgeLabel = {ok:'仕入れOK', soso:'微妙', ng:'見送り'}[match.judgment] || match.judgment;
+    historyWarningEl.hidden = false;
+    historyWarningEl.textContent = `⚠ この商品は過去に判定済み：${fmtDate(match.date)} ${judgeLabel}（想定売価${fmtYen(match.sellPrice)}）`;
+  } else {
+    historyWarningEl.hidden = true;
+  }
+}
+
+/* --- バーコードスキャン（html5-qrcode。iOS Safari対応のため） --- */
+const scanModal = document.getElementById('scanModal');
+let html5QrCode = null;
+let scanRunning = false;
+
+document.getElementById('scanBtn').addEventListener('click', startScan);
+document.getElementById('scanCancelBtn').addEventListener('click', stopScan);
+
+async function startScan(){
+  const noticeEl = document.getElementById('scanNotice');
+  noticeEl.hidden = true;
+
+  if(typeof Html5Qrcode === 'undefined'){
+    noticeEl.hidden = false;
+    noticeEl.textContent = 'スキャン機能を読み込めませんでした（ネット接続をご確認のうえ手入力してください）。';
+    return;
+  }
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+    noticeEl.hidden = false;
+    noticeEl.textContent = 'この端末はスキャン非対応です。手入力してください。';
+    return;
+  }
+
+  scanModal.hidden = false;
+  html5QrCode = new Html5Qrcode('scanRegion', {
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E
+    ],
+    verbose: false
+  });
+
+  try{
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 260, height: 160 } },
+      (decodedText)=>{
+        janCodeEl.value = decodedText;
+        renderSearchLinks();
+        stopScan();
+      },
+      ()=>{ /* 検出失敗は毎フレーム呼ばれるので無視して継続 */ }
+    );
+    scanRunning = true;
+  }catch(e){
+    noticeEl.hidden = false;
+    noticeEl.textContent = 'カメラを起動できませんでした。手入力してください。';
+    scanModal.hidden = true;
+  }
+}
+function stopScan(){
+  if(scanRunning && html5QrCode){
+    html5QrCode.stop().then(()=> html5QrCode.clear()).catch(()=>{});
+  }
+  scanRunning = false;
+  scanModal.hidden = true;
+}
+
+/* --- 判定計算 --- */
+let lastResult = null;
+
+document.getElementById('calcBtn').addEventListener('click', ()=>{
+  const name = productNameEl.value.trim();
+  const purchasePrice = parseFloat(purchasePriceEl.value) || 0;
+  const sellPrice = parseFloat(sellPriceEl.value) || 0;
+  if(!name){ alert('商品名・型番を入力してください'); return; }
+  if(!purchasePrice || !sellPrice){ alert('仕入れ価格と想定売価を入力してください'); return; }
+
+  const settings = getSettings();
+  const catId = shippingCategoryEl.value;
+  const cat = settings.shippingCategories.find(c=>c.id===catId) || settings.shippingCategories[0];
+  const shippingFee = cat ? cat.fee : 0;
+  const feeRate = settings.feeRate;
+
+  const quantity = currentMode==='new' ? (parseInt(quantityEl.value,10) || 1) : 1;
+  const pointRate = currentMode==='new' ? (parseFloat(pointRateEl.value) || 0) : 0;
+  const effectivePurchasePrice = currentMode==='new'
+    ? purchasePrice * (1 - pointRate/100)
+    : purchasePrice;
+
+  const mercariFee = sellPrice * (feeRate/100);
+  const profitPerUnit = sellPrice - mercariFee - shippingFee - effectivePurchasePrice;
+  const profitRate = effectivePurchasePrice > 0 ? (profitPerUnit / effectivePurchasePrice) * 100 : null;
+  const totalProfit = profitPerUnit * quantity;
+
+  let judgment = 'ng';
+  const th = settings.thresholds;
+  if(profitPerUnit >= th.okProfit && profitRate !== null && profitRate >= th.okRate){
+    judgment = 'ok';
+  } else if(profitPerUnit >= th.sokuProfit){
+    judgment = 'soso';
+  }
+
+  lastResult = {
+    name, mode: currentMode, purchasePrice, sellPrice, effectivePurchasePrice,
+    shippingCategory: cat ? cat.name : '', shippingFee, feeRate,
+    quantity, pointRate, conditionMemo: currentMode==='used' ? conditionMemoEl.value.trim() : '',
+    jan: currentMode==='new' ? janCodeEl.value.trim() : '',
+    profitPerUnit, profitRate, totalProfit, judgment
+  };
+  renderResult();
+});
+
+function renderResult(){
+  const r = lastResult;
+  const box = document.getElementById('resultBox');
+  const jEl = document.getElementById('resultJudgment');
+  const dEl = document.getElementById('resultDetail');
+  const labelMap = { ok:'仕入れOK', soso:'微妙', ng:'見送り' };
+  jEl.className = 'result-judgment ' + r.judgment;
+  jEl.textContent = labelMap[r.judgment];
+
+  let html = '';
+  html += `<div>利益額（1個あたり）：<b>${fmtYen(r.profitPerUnit)}</b></div>`;
+  html += `<div>利益率：<b>${r.profitRate===null?'-':r.profitRate.toFixed(1)+'%'}</b></div>`;
+  if(r.mode==='new' && r.quantity>1){
+    html += `<div>合計利益（${r.quantity}個）：<b>${fmtYen(r.totalProfit)}</b></div>`;
+  }
+  html += `<div>実質仕入れ価格：${fmtYen(r.effectivePurchasePrice)}</div>`;
+  html += `<div>送料（${r.shippingCategory}）：${fmtYen(r.shippingFee)}</div>`;
+  html += `<div>メルカリ手数料（${r.feeRate}%）：${fmtYen(r.sellPrice * r.feeRate/100)}</div>`;
+  dEl.innerHTML = html;
+
+  fillStoreSelect();
+  box.hidden = false;
+  box.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function fillStoreSelect(){
+  const sel = document.getElementById('storeSelect');
+  const stores = getStores();
+  sel.innerHTML = '<option value="">（未選択）</option>' + stores.map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
+}
+
+document.getElementById('saveHistoryBtn').addEventListener('click', ()=>{
+  if(!lastResult) return;
+  const hist = getHistory();
+  const record = Object.assign({}, lastResult, {
+    id: uid(),
+    date: new Date().toISOString(),
+    storeName: document.getElementById('storeSelect').value,
+    recordedBy: getSettings().myName || ''
+  });
+  hist.push(record);
+  saveHistory(hist);
+
+  if(pendingMemoId){
+    const memos = getQuickMemos();
+    const m = memos.find(x=>x.id===pendingMemoId);
+    if(m) m.judged = true;
+    saveQuickMemos(memos);
+    pendingMemoId = null;
+  }
+
+  alert('履歴に保存しました');
+  checkHistoryWarning();
+});
+
+/* ==================== 画面2: クイックメモ ==================== */
+const addMemoBtn = document.getElementById('addMemoBtn');
+const memoForm = document.getElementById('memoForm');
+const memoNameEl = document.getElementById('memoName');
+const memoPriceEl = document.getElementById('memoPrice');
+const memoPhotoInput = document.getElementById('memoPhotoInput');
+const memoPhotoPreviewWrap = document.getElementById('memoPhotoPreviewWrap');
+let memoPhotoData = null;
+
+addMemoBtn.addEventListener('click', ()=>{
+  memoForm.hidden = false;
+  memoNameEl.value = '';
+  memoPriceEl.value = '';
+  memoPhotoData = null;
+  memoPhotoPreviewWrap.innerHTML = '';
+  memoNameEl.focus();
+});
+document.getElementById('memoCancelBtn').addEventListener('click', ()=>{ memoForm.hidden = true; });
+
+memoPhotoInput.addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  resizeImageToDataURL(file, 800, (dataUrl)=>{
+    memoPhotoData = dataUrl;
+    memoPhotoPreviewWrap.innerHTML = `<img class="memo-thumb" src="${dataUrl}">`;
+  });
+});
+
+function resizeImageToDataURL(file, maxSide, cb){
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const img = new Image();
+    img.onload = function(){
+      let { width, height } = img;
+      if(width > height && width > maxSide){ height = Math.round(height * maxSide/width); width = maxSide; }
+      else if(height > maxSide){ width = Math.round(width * maxSide/height); height = maxSide; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      cb(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('memoSaveBtn').addEventListener('click', ()=>{
+  const name = memoNameEl.value.trim();
+  if(!name){ alert('商品名・型番を入力してください'); return; }
+  const memos = getQuickMemos();
+  memos.unshift({
+    id: uid(),
+    name,
+    price: parseFloat(memoPriceEl.value) || 0,
+    photo: memoPhotoData,
+    date: new Date().toISOString(),
+    judged: false
+  });
+  saveQuickMemos(memos);
+  memoForm.hidden = true;
+  renderMemoList();
+});
+
+function renderMemoList(){
+  const memos = getQuickMemos();
+  const wrap = document.getElementById('memoList');
+  if(!memos.length){ wrap.innerHTML = '<small class="hint">メモはまだありません</small>'; return; }
+  wrap.innerHTML = memos.map(m => `
+    <div class="memo-card ${m.judged?'judged':''}">
+      <div class="row">
+        <div>
+          <div class="name">${escapeHtml(m.name)}</div>
+          <div class="price">${fmtYen(m.price)}　${fmtDate(m.date)} ${m.judged?'<span class="tag ok">済</span>':''}</div>
+        </div>
+        ${m.photo?`<img class="memo-thumb" src="${m.photo}">`:''}
+      </div>
+      <div class="memo-actions">
+        <button class="mini-btn" data-act="use" data-id="${m.id}">→判定する</button>
+        <button class="mini-btn del" data-act="del" data-id="${m.id}">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+document.getElementById('memoList').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-act]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const memos = getQuickMemos();
+  const memo = memos.find(m=>m.id===id);
+  if(!memo) return;
+  if(btn.dataset.act === 'use'){
+    productNameEl.value = memo.name;
+    purchasePriceEl.value = memo.price || '';
+    sellPriceEl.value = '';
+    pendingMemoId = memo.id;
+    renderSearchLinks();
+    checkHistoryWarning();
+    document.getElementById('resultBox').hidden = true;
+    showScreen('judge');
+  } else if(btn.dataset.act === 'del'){
+    if(confirm('このメモを削除しますか？')){
+      saveQuickMemos(memos.filter(m=>m.id!==id));
+      renderMemoList();
+    }
+  }
+});
+
+/* ==================== 画面3: 履歴 ==================== */
+function renderHistoryList(){
+  const keyword = document.getElementById('historySearch').value.trim();
+  let hist = getHistory().slice().sort((a,b)=> new Date(b.date)-new Date(a.date));
+  if(keyword) hist = hist.filter(h => h.name && h.name.includes(keyword));
+  const wrap = document.getElementById('historyList');
+  if(!hist.length){ wrap.innerHTML = '<small class="hint">該当する履歴はありません</small>'; return; }
+  const labelMap = { ok:'OK', soso:'微妙', ng:'見送り' };
+  wrap.innerHTML = hist.map(h => `
+    <div class="history-card" data-id="${h.id}">
+      <div class="row">
+        <div class="name">${escapeHtml(h.name)}</div>
+        <span class="tag ${h.judgment}">${labelMap[h.judgment]}</span>
+      </div>
+      <div class="meta">
+        <span class="tag ${h.mode==='used'?'used':'new'}">${h.mode==='used'?'中古':'新品'}</span>
+        ${fmtDate(h.date)}　仕入${fmtYen(h.purchasePrice)}→売${fmtYen(h.sellPrice)}
+        ${h.storeName?('　'+escapeHtml(h.storeName)):''}
+        ${h.recordedBy?('　記録:'+escapeHtml(h.recordedBy)):''}
+      </div>
+    </div>
+  `).join('');
+}
+document.getElementById('historySearch').addEventListener('input', renderHistoryList);
+document.getElementById('historyList').addEventListener('click', (e)=>{
+  const card = e.target.closest('.history-card');
+  if(!card) return;
+  openHistoryDetail(card.dataset.id);
+});
+
+function openHistoryDetail(id){
+  const hist = getHistory();
+  const h = hist.find(x=>x.id===id);
+  if(!h) return;
+  const labelMap = { ok:'仕入れOK', soso:'微妙', ng:'見送り' };
+  openModal(`
+    <h2>${escapeHtml(h.name)}</h2>
+    <div style="font-size:14px; line-height:2;">
+      <div>日付：${fmtDate(h.date)}</div>
+      <div>モード：${h.mode==='used'?'中古':'新品'}</div>
+      <div>判定：${labelMap[h.judgment]}</div>
+      <div>仕入れ価格：${fmtYen(h.purchasePrice)}</div>
+      <div>想定売価：${fmtYen(h.sellPrice)}</div>
+      <div>利益額（1個）：${fmtYen(h.profitPerUnit)}</div>
+      <div>利益率：${h.profitRate===null?'-':h.profitRate.toFixed(1)+'%'}</div>
+      ${h.mode==='new'?`<div>個数：${h.quantity}　合計利益：${fmtYen(h.totalProfit)}</div>`:''}
+      ${h.mode==='used' && h.conditionMemo?`<div>状態メモ：${escapeHtml(h.conditionMemo)}</div>`:''}
+      ${h.mode==='new' && h.jan?`<div>JAN：${escapeHtml(h.jan)}</div>`:''}
+      <div>店舗：${escapeHtml(h.storeName||'-')}</div>
+      <div>記録者：${escapeHtml(h.recordedBy||'-')}</div>
+    </div>
+    <div class="form-actions">
+      <button class="danger-btn" id="histDelBtn">削除</button>
+      <button class="secondary-btn" id="histEditBtn">編集</button>
+    </div>
+    <div class="close-row"><button class="ghost-btn" id="histCloseBtn">閉じる</button></div>
+  `);
+  document.getElementById('histCloseBtn').addEventListener('click', closeModal);
+  document.getElementById('histDelBtn').addEventListener('click', ()=>{
+    if(confirm('この履歴を削除しますか？')){
+      saveHistory(getHistory().filter(x=>x.id!==id));
+      closeModal();
+      renderHistoryList();
+    }
+  });
+  document.getElementById('histEditBtn').addEventListener('click', ()=> openHistoryEdit(id));
+}
+
+function openHistoryEdit(id){
+  const hist = getHistory();
+  const h = hist.find(x=>x.id===id);
+  if(!h) return;
+  openModal(`
+    <h2>履歴を編集</h2>
+    <label>商品名・型番</label><input type="text" id="editName" value="${escapeAttr(h.name)}">
+    <label>仕入れ価格</label><input type="number" id="editPurchase" value="${h.purchasePrice}">
+    <label>想定売価</label><input type="number" id="editSell" value="${h.sellPrice}">
+    <label>店舗名</label><input type="text" id="editStore" value="${escapeAttr(h.storeName||'')}">
+    <div class="form-actions">
+      <button class="ghost-btn" id="editCancelBtn">キャンセル</button>
+      <button class="secondary-btn" id="editSaveBtn">保存</button>
+    </div>
+  `);
+  document.getElementById('editCancelBtn').addEventListener('click', ()=> openHistoryDetail(id));
+  document.getElementById('editSaveBtn').addEventListener('click', ()=>{
+    h.name = document.getElementById('editName').value.trim();
+    h.purchasePrice = parseFloat(document.getElementById('editPurchase').value) || 0;
+    h.sellPrice = parseFloat(document.getElementById('editSell').value) || 0;
+    h.storeName = document.getElementById('editStore').value.trim();
+    saveHistory(hist);
+    closeModal();
+    renderHistoryList();
+  });
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  const hist = getHistory().slice().sort((a,b)=> new Date(b.date)-new Date(a.date));
+  const labelMap = { ok:'OK', soso:'微妙', ng:'見送り' };
+  const rows = [['日付','商品名・型番','モード','仕入れ価格','想定売価','利益額','利益率','判定','店舗名','記録者']];
+  hist.forEach(h=>{
+    rows.push([
+      fmtDate(h.date), h.name, h.mode==='used'?'中古':'新品', h.purchasePrice, h.sellPrice,
+      Math.round(h.profitPerUnit), h.profitRate===null?'':h.profitRate.toFixed(1), labelMap[h.judgment], h.storeName||'', h.recordedBy||''
+    ]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  openModal(`
+    <h2>CSV（コピーしてご利用ください）</h2>
+    <textarea id="csvArea" style="min-height:200px; font-size:12px;" readonly>${csv}</textarea>
+    <div class="close-row"><button class="secondary-btn" id="csvCopyBtn">クリップボードにコピー</button></div>
+    <div class="close-row"><button class="ghost-btn" id="csvCloseBtn">閉じる</button></div>
+  `);
+  document.getElementById('csvCloseBtn').addEventListener('click', closeModal);
+  document.getElementById('csvCopyBtn').addEventListener('click', ()=>{
+    const area = document.getElementById('csvArea');
+    area.select();
+    try{ document.execCommand('copy'); alert('コピーしました'); }catch(e){ alert('選択した状態なので手動でコピーしてください'); }
+  });
+});
+
+/* ==================== 画面4: マイ基準・設定 ==================== */
+function renderSettingsScreen(){
+  renderRules();
+  renderStores();
+  renderShippingSettings();
+  const s = getSettings();
+  document.getElementById('thresholdOkProfit').value = s.thresholds.okProfit;
+  document.getElementById('thresholdOkRate').value = s.thresholds.okRate;
+  document.getElementById('thresholdSokuProfit').value = s.thresholds.sokuProfit;
+  document.getElementById('feeRateInput').value = s.feeRate;
+  document.getElementById('myNameInput').value = s.myName || '';
+}
+
+/* マイ仕入れ基準 */
+function renderRules(){
+  const rules = getMyRules();
+  const wrap = document.getElementById('rulesList');
+  if(!rules.length){ wrap.innerHTML = '<small class="hint">基準はまだありません</small>'; return; }
+  wrap.innerHTML = rules.map((r,i) => `
+    <div class="rule-card" data-id="${r.id}">
+      <div class="genre">${escapeHtml(r.genre)}</div>
+      <div class="body">${escapeHtml(r.rule)}</div>
+      <div class="actions">
+        <button class="mini-btn" data-act="up" data-id="${r.id}" ${i===0?'disabled':''}>↑</button>
+        <button class="mini-btn" data-act="down" data-id="${r.id}" ${i===rules.length-1?'disabled':''}>↓</button>
+        <button class="mini-btn" data-act="edit" data-id="${r.id}">編集</button>
+        <button class="mini-btn del" data-act="del" data-id="${r.id}">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+document.getElementById('rulesList').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-act]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  let rules = getMyRules();
+  const idx = rules.findIndex(r=>r.id===id);
+  if(idx<0) return;
+  if(btn.dataset.act==='up' && idx>0){ [rules[idx-1],rules[idx]]=[rules[idx],rules[idx-1]]; saveMyRules(rules); renderRules(); }
+  else if(btn.dataset.act==='down' && idx<rules.length-1){ [rules[idx+1],rules[idx]]=[rules[idx],rules[idx+1]]; saveMyRules(rules); renderRules(); }
+  else if(btn.dataset.act==='del'){ if(confirm('削除しますか？')){ saveMyRules(rules.filter(r=>r.id!==id)); renderRules(); } }
+  else if(btn.dataset.act==='edit'){ openRuleForm(rules[idx]); }
+});
+document.getElementById('addRuleBtn').addEventListener('click', ()=> openRuleForm(null));
+function openRuleForm(rule){
+  openModal(`
+    <h2>${rule?'基準を編集':'基準を追加'}</h2>
+    <label>ジャンル名</label><input type="text" id="ruleGenre" value="${escapeAttr(rule?rule.genre:'')}">
+    <label>ルール本文</label><textarea id="ruleBody">${rule?escapeHtml(rule.rule):''}</textarea>
+    <div class="form-actions">
+      <button class="ghost-btn" id="ruleCancelBtn">キャンセル</button>
+      <button class="secondary-btn" id="ruleSaveBtn">保存</button>
+    </div>
+  `);
+  document.getElementById('ruleCancelBtn').addEventListener('click', closeModal);
+  document.getElementById('ruleSaveBtn').addEventListener('click', ()=>{
+    const genre = document.getElementById('ruleGenre').value.trim();
+    const body = document.getElementById('ruleBody').value.trim();
+    if(!genre || !body){ alert('両方入力してください'); return; }
+    const rules = getMyRules();
+    if(rule){ const r = rules.find(x=>x.id===rule.id); r.genre=genre; r.rule=body; }
+    else { rules.push({ id: uid(), genre, rule: body }); }
+    saveMyRules(rules);
+    closeModal();
+    renderRules();
+  });
+}
+
+/* 店舗メモ */
+function renderStores(){
+  const stores = getStores();
+  const wrap = document.getElementById('storesList');
+  if(!stores.length){ wrap.innerHTML = '<small class="hint">店舗はまだありません</small>'; return; }
+  wrap.innerHTML = stores.map(s => `
+    <div class="store-card" data-id="${s.id}">
+      <div class="sname">${escapeHtml(s.name)}</div>
+      <div class="memo">${escapeHtml(s.memo||'')}</div>
+      <div class="actions">
+        <button class="mini-btn" data-act="edit" data-id="${s.id}">編集</button>
+        <button class="mini-btn del" data-act="del" data-id="${s.id}">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+document.getElementById('storesList').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-act]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const stores = getStores();
+  if(btn.dataset.act==='del'){ if(confirm('削除しますか？')){ saveStores(stores.filter(s=>s.id!==id)); renderStores(); } }
+  else if(btn.dataset.act==='edit'){ openStoreForm(stores.find(s=>s.id===id)); }
+});
+document.getElementById('addStoreBtn').addEventListener('click', ()=> openStoreForm(null));
+function openStoreForm(store){
+  openModal(`
+    <h2>${store?'店舗を編集':'店舗を追加'}</h2>
+    <label>店舗名</label><input type="text" id="storeName" value="${escapeAttr(store?store.name:'')}">
+    <label>攻略メモ</label><textarea id="storeMemo">${store?escapeHtml(store.memo||''):''}</textarea>
+    <div class="form-actions">
+      <button class="ghost-btn" id="storeCancelBtn">キャンセル</button>
+      <button class="secondary-btn" id="storeSaveBtn">保存</button>
+    </div>
+  `);
+  document.getElementById('storeCancelBtn').addEventListener('click', closeModal);
+  document.getElementById('storeSaveBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('storeName').value.trim();
+    const memo = document.getElementById('storeMemo').value.trim();
+    if(!name){ alert('店舗名を入力してください'); return; }
+    const stores = getStores();
+    if(store){ const s = stores.find(x=>x.id===store.id); s.name=name; s.memo=memo; }
+    else { stores.push({ id: uid(), name, memo }); }
+    saveStores(stores);
+    closeModal();
+    renderStores();
+  });
+}
+
+/* 送料設定 */
+function renderShippingSettings(){
+  const s = getSettings();
+  const wrap = document.getElementById('shippingSettings');
+  wrap.innerHTML = s.shippingCategories.map(c => `
+    <div class="shipping-row">
+      <span>${escapeHtml(c.name)}</span>
+      <input type="number" data-id="${c.id}" class="shipFeeInput" value="${c.fee}">
+    </div>
+  `).join('');
+  wrap.querySelectorAll('.shipFeeInput').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const settings = getSettings();
+      const cat = settings.shippingCategories.find(c=>c.id===inp.dataset.id);
+      if(cat){ cat.fee = parseFloat(inp.value) || 0; saveSettings(settings); fillShippingOptions(); }
+    });
+  });
+}
+
+/* しきい値・手数料 */
+['thresholdOkProfit','thresholdOkRate','thresholdSokuProfit'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', ()=>{
+    const s = getSettings();
+    s.thresholds.okProfit = parseFloat(document.getElementById('thresholdOkProfit').value) || 0;
+    s.thresholds.okRate = parseFloat(document.getElementById('thresholdOkRate').value) || 0;
+    s.thresholds.sokuProfit = parseFloat(document.getElementById('thresholdSokuProfit').value) || 0;
+    saveSettings(s);
+  });
+});
+document.getElementById('feeRateInput').addEventListener('change', ()=>{
+  const s = getSettings();
+  s.feeRate = parseFloat(document.getElementById('feeRateInput').value) || 0;
+  saveSettings(s);
+});
+document.getElementById('myNameInput').addEventListener('change', ()=>{
+  const s = getSettings();
+  s.myName = document.getElementById('myNameInput').value.trim();
+  saveSettings(s);
+});
+
+/* バックアップ・復元 */
+document.getElementById('backupBtn').addEventListener('click', ()=>{
+  const data = {
+    history: getHistory(),
+    quickMemos: getQuickMemos(),
+    myRules: getMyRules(),
+    stores: getStores(),
+    settings: getSettings(),
+    exportedAt: new Date().toISOString()
+  };
+  const area = document.getElementById('backupArea');
+  area.value = JSON.stringify(data);
+  area.hidden = false;
+  area.select();
+});
+document.getElementById('restoreBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('restoreArea').value.trim();
+  if(!text){ alert('復元用のテキストを貼り付けてください'); return; }
+  if(!confirm('現在のデータは消えて、貼り付けたテキストだけになります。本当に上書き復元してよろしいですか？')) return;
+  try{
+    const data = JSON.parse(text);
+    if(data.history) saveHistory(data.history);
+    if(data.quickMemos) saveQuickMemos(data.quickMemos);
+    if(data.myRules) saveMyRules(data.myRules);
+    if(data.stores) saveStores(data.stores);
+    if(data.settings) saveSettings(data.settings);
+    alert('復元しました');
+    fillShippingOptions();
+    renderSettingsScreen();
+  }catch(e){
+    alert('テキストの形式が正しくありません');
+  }
+});
+
+/* 合体（マージ）：現在のデータは消さずに、重複しない分だけ追加する */
+function mergeArraysById(current, incoming){
+  if(!Array.isArray(incoming)) return current;
+  const existingIds = new Set(current.map(item => item.id));
+  const toAdd = incoming.filter(item => item && item.id && !existingIds.has(item.id));
+  return current.concat(toAdd);
+}
+document.getElementById('mergeBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('restoreArea').value.trim();
+  if(!text){ alert('合体用のテキストを貼り付けてください'); return; }
+  try{
+    const data = JSON.parse(text);
+    const addedHistory = mergeArraysById(getHistory(), data.history).length - getHistory().length;
+    const addedMemos = mergeArraysById(getQuickMemos(), data.quickMemos).length - getQuickMemos().length;
+    const addedRules = mergeArraysById(getMyRules(), data.myRules).length - getMyRules().length;
+    const addedStores = mergeArraysById(getStores(), data.stores).length - getStores().length;
+
+    saveHistory(mergeArraysById(getHistory(), data.history));
+    saveQuickMemos(mergeArraysById(getQuickMemos(), data.quickMemos));
+    saveMyRules(mergeArraysById(getMyRules(), data.myRules));
+    saveStores(mergeArraysById(getStores(), data.stores));
+
+    alert(`合体しました（履歴+${addedHistory}件、メモ+${addedMemos}件、基準+${addedRules}件、店舗+${addedStores}件）`);
+    renderSettingsScreen();
+  }catch(e){
+    alert('テキストの形式が正しくありません');
+  }
+});
+
+/* ==================== ユーティリティ ==================== */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+/* ==================== 初期化 ==================== */
+fillShippingOptions();
+renderSearchLinks();
+
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
