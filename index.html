@@ -23,14 +23,15 @@
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;}
-#app{display:flex;flex-direction:column;min-height:100dvh;}
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+  position:fixed; inset:0; overscroll-behavior:none;}
+#app{display:flex;flex-direction:column;height:100%;}
 header.topbar{
   padding:calc(14px + env(safe-area-inset-top)) 16px 10px; background:var(--card); border-bottom:1px solid var(--border);
   position:sticky; top:0; z-index:5;
 }
 header.topbar h1{font-size:17px; margin:0; font-weight:700; text-align:center;}
-main{flex:1; overflow-y:auto; padding:12px 14px 90px;}
+main{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px 14px 90px;}
 .screen{display:none;}
 .screen.active{display:block;}
 
@@ -527,9 +528,29 @@ async function startScan(){
     scanRunning = true;
   }catch(e){
     noticeEl.hidden = false;
-    noticeEl.textContent = 'カメラを起動できませんでした。手入力してください。';
+    noticeEl.textContent = describeCameraError(e);
     scanModal.hidden = true;
   }
+}
+
+function describeCameraError(e){
+  const name = (e && e.name) || '';
+  const standaloneHint = (window.navigator.standalone)
+    ? '（ホーム画面から起動中の場合、Safariで直接開くと使えることがあります）'
+    : '';
+  if(name === 'NotAllowedError' || name === 'PermissionDeniedError'){
+    return 'カメラの使用が許可されていません。iPhoneの「設定」→「Safari」→「カメラ」を確認してください。' + standaloneHint;
+  }
+  if(name === 'NotFoundError' || name === 'DevicesNotFoundError'){
+    return 'カメラが見つかりませんでした。手入力してください。';
+  }
+  if(name === 'NotReadableError' || name === 'TrackStartError'){
+    return '他のアプリがカメラを使用中の可能性があります。他のカメラアプリを閉じてから再度お試しください。';
+  }
+  if(name === 'OverconstrainedError'){
+    return 'カメラの起動条件に問題がありました。手入力してください。';
+  }
+  return 'カメラを起動できませんでした（' + (name || (e && e.message) || '不明なエラー') + '）。手入力してください。' + standaloneHint;
 }
 function stopScan(){
   if(scanRunning && html5QrCode){
