@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sedori-aibou-v1';
+const CACHE_NAME = 'sedori-aibou-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',
