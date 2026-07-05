@@ -3,7 +3,7 @@
   "short_name": "仕入れ相棒",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#f4f6f5",
   "theme_color": "#158a6b",
   "icons": [
