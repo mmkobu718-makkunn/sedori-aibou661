@@ -70,6 +70,22 @@ input:focus, select:focus, textarea:focus{outline:2px solid var(--main); border-
 .link-chip{padding:10px 14px; border-radius:20px; background:#eef2f0; color:var(--main-dark);
   font-size:13px; font-weight:700; border:1px solid var(--border); text-decoration:none; display:inline-block;}
 
+.market-prices{display:flex; flex-direction:column; gap:10px;}
+.market-site{border:1px solid var(--border); border-radius:12px; padding:10px 12px; background:var(--card);}
+.market-site-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+.market-site-name{font-size:14px; font-weight:700; color:var(--text);}
+.market-clear-btn{padding:4px 10px; font-size:12px; font-weight:600; color:var(--sub); background:transparent; border:1px solid var(--border); border-radius:8px;}
+.market-input-row{display:flex; gap:8px;}
+.market-input-row input{flex:1; padding:9px 10px; font-size:15px;}
+.market-add-btn{padding:0 16px; border-radius:10px; border:1px solid var(--main); background:#eaf7f3; color:var(--main); font-weight:700; font-size:14px; white-space:nowrap;}
+.market-chip-list{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+.price-chip{padding:6px 8px 6px 12px; border-radius:16px; background:#eef2f0; color:var(--text);
+  font-size:13px; font-weight:600; border:1px solid var(--border); display:inline-flex; align-items:center; gap:6px; cursor:pointer;}
+.chip-del{background:transparent; border:none; color:var(--sub); font-size:14px; line-height:1; padding:0 2px; font-weight:700;}
+.market-stats{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+.stat-btn{padding:7px 10px; border-radius:9px; border:1px solid var(--main); background:var(--card); color:var(--main-dark); font-size:12px; font-weight:700;}
+#sellPrice.flash{outline:2px solid var(--main); background:#eaf7f3;}
+
 .history-warning{margin:10px 0; padding:10px 12px; border-radius:10px; background:#fff6dc; color:#7a5900; font-size:13px; font-weight:600; border:1px solid #f0d98c;}
 
 .result-box{margin-top:20px; border-radius:16px; overflow:hidden; border:1px solid var(--border);}
@@ -186,6 +202,9 @@ small.hint{color:var(--sub); font-size:12px; display:block; margin-top:6px;}
 
       <div class="section-label">相場を調べる（タップで別タブが開きます）</div>
       <div id="searchLinks" class="link-grid"></div>
+
+      <div class="section-label">相場メモ（見つけた価格を入力すると中央値などを自動計算）</div>
+      <div id="marketPrices" class="market-prices"></div>
 
       <button id="calcBtn" class="primary-btn">判定する</button>
 
@@ -464,6 +483,107 @@ function renderSearchLinks(){
 }
 productNameEl.addEventListener('input', ()=>{ renderSearchLinks(); checkHistoryWarning(); });
 janCodeEl && janCodeEl.addEventListener('input', renderSearchLinks);
+
+/* --- 相場メモ（手入力した価格から中央値・最安値・最高値を計算） --- */
+const MARKET_SITES = ['メルカリ(売切)', 'ヤフーフリマ', 'オークファン'];
+let marketPriceData = {};
+
+function resetMarketPrices(){
+  marketPriceData = {};
+  renderMarketPriceEntry();
+}
+
+function renderMarketPriceEntry(){
+  const wrap = document.getElementById('marketPrices');
+  MARKET_SITES.forEach(site => { if(!marketPriceData[site]) marketPriceData[site] = []; });
+  wrap.innerHTML = MARKET_SITES.map(site => `
+    <div class="market-site">
+      <div class="market-site-head">
+        <span class="market-site-name">${site}</span>
+        <button type="button" class="market-clear-btn" data-site="${site}">クリア</button>
+      </div>
+      <div class="market-input-row">
+        <input type="number" inputmode="numeric" class="market-price-input" placeholder="価格を入力" data-site="${site}">
+        <button type="button" class="market-add-btn" data-site="${site}">追加</button>
+      </div>
+      <div class="market-chip-list" data-site="${site}"></div>
+      <div class="market-stats" data-site="${site}"></div>
+    </div>
+  `).join('');
+  MARKET_SITES.forEach(site => renderMarketSiteBody(site));
+}
+
+function renderMarketSiteBody(site){
+  const chipWrap = document.querySelector(`.market-chip-list[data-site="${CSS.escape(site)}"]`);
+  const statsWrap = document.querySelector(`.market-stats[data-site="${CSS.escape(site)}"]`);
+  const prices = marketPriceData[site] || [];
+  chipWrap.innerHTML = prices.length
+    ? prices.map((p, i) => `<span class="price-chip" data-site="${site}" data-idx="${i}">${fmtYen(p)}<button type="button" class="chip-del" data-site="${site}" data-idx="${i}">×</button></span>`).join('')
+    : '<small class="hint">まだ入力なし</small>';
+
+  if(prices.length){
+    const sorted = [...prices].sort((a,b)=>a-b);
+    const min = sorted[0], max = sorted[sorted.length-1];
+    const mid = Math.floor(sorted.length/2);
+    const median = sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid-1]+sorted[mid])/2);
+    statsWrap.innerHTML = `
+      <button type="button" class="stat-btn" data-val="${median}">中央値 ${fmtYen(median)}</button>
+      <button type="button" class="stat-btn" data-val="${min}">最安値 ${fmtYen(min)}</button>
+      <button type="button" class="stat-btn" data-val="${max}">最高値 ${fmtYen(max)}</button>
+    `;
+  } else {
+    statsWrap.innerHTML = '';
+  }
+}
+
+function addMarketPrice(site){
+  const input = document.querySelector(`.market-price-input[data-site="${CSS.escape(site)}"]`);
+  const val = parseFloat(input.value);
+  if(!val || val <= 0) return;
+  marketPriceData[site].push(val);
+  input.value = '';
+  renderMarketSiteBody(site);
+  input.focus();
+}
+
+function applySellPrice(val){
+  sellPriceEl.value = val;
+  sellPriceEl.classList.add('flash');
+  setTimeout(()=> sellPriceEl.classList.remove('flash'), 600);
+}
+
+const marketPricesEl = document.getElementById('marketPrices');
+marketPricesEl.addEventListener('click', (e)=>{
+  const addBtn = e.target.closest('.market-add-btn');
+  if(addBtn){ addMarketPrice(addBtn.dataset.site); return; }
+
+  const clearBtn = e.target.closest('.market-clear-btn');
+  if(clearBtn){ marketPriceData[clearBtn.dataset.site] = []; renderMarketSiteBody(clearBtn.dataset.site); return; }
+
+  const delBtn = e.target.closest('.chip-del');
+  if(delBtn){
+    const site = delBtn.dataset.site, idx = parseInt(delBtn.dataset.idx, 10);
+    marketPriceData[site].splice(idx, 1);
+    renderMarketSiteBody(site);
+    return;
+  }
+
+  const chip = e.target.closest('.price-chip');
+  if(chip){
+    const site = chip.dataset.site, idx = parseInt(chip.dataset.idx, 10);
+    applySellPrice(marketPriceData[site][idx]);
+    return;
+  }
+
+  const statBtn = e.target.closest('.stat-btn');
+  if(statBtn){ applySellPrice(parseInt(statBtn.dataset.val, 10)); return; }
+});
+marketPricesEl.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && e.target.classList.contains('market-price-input')){
+    e.preventDefault();
+    addMarketPrice(e.target.dataset.site);
+  }
+});
 
 function checkHistoryWarning(){
   const kw = productNameEl.value.trim();
@@ -753,6 +873,7 @@ document.getElementById('memoList').addEventListener('click', (e)=>{
     sellPriceEl.value = '';
     pendingMemoId = memo.id;
     renderSearchLinks();
+    resetMarketPrices();
     checkHistoryWarning();
     document.getElementById('resultBox').hidden = true;
     showScreen('judge');
@@ -1113,6 +1234,7 @@ function escapeAttr(str){ return escapeHtml(str); }
 /* ==================== 初期化 ==================== */
 fillShippingOptions();
 renderSearchLinks();
+renderMarketPriceEntry();
 
 })();
 </script>
