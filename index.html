@@ -66,9 +66,11 @@ input:focus, select:focus, textarea:focus{outline:2px solid var(--main); border-
 .notice{margin-top:8px; font-size:13px; color:var(--sub); background:#fff6dc; padding:8px 10px; border-radius:8px;}
 
 .section-label{font-size:13px; color:var(--sub); font-weight:700; margin:18px 0 8px;}
-.link-grid{display:flex; flex-wrap:wrap; gap:8px;}
+.link-grid{display:flex; flex-direction:column; gap:10px;}
+.link-card{display:flex; flex-direction:column; align-items:flex-start; gap:4px;}
 .link-chip{padding:10px 14px; border-radius:20px; background:#eef2f0; color:var(--main-dark);
   font-size:13px; font-weight:700; border:1px solid var(--border); text-decoration:none; display:inline-block;}
+.link-card small.hint{margin-top:0;}
 
 .market-prices{display:flex; flex-direction:column; gap:10px;}
 .market-site{border:1px solid var(--border); border-radius:12px; padding:10px 12px; background:var(--card);}
@@ -466,20 +468,33 @@ function renderSearchLinks(){
   let links = [];
   if(currentMode === 'used'){
     links = [
-      { label:'メルカリ(売切)', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out` },
-      { label:'オークファン', url:`https://aucfan.com/search1/q-${q}/` },
-      { label:'Yahoo!フリマ', url:`https://paypayfleamarket.yahoo.co.jp/search/${q}` },
+      { label:'メルカリ(売切)', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out`,
+        hint:'このリンクは売り切れ済みだけに絞ってあります。商品写真に「SOLD」の帯が付いているものが実際に売れた価格です。' },
+      { label:'オークファン', url:`https://aucfan.com/search1/q-${q}/`,
+        hint:'一覧に出る価格はすべて「過去に売れた（落札された）」実績です。新しい順に上から見ればOKです。' },
+      { label:'Yahoo!フリマ', url:`https://paypayfleamarket.yahoo.co.jp/search/${q}`,
+        hint:'このリンクは販売中も含めた通常検索です。開いたら「販売状況」の絞り込みで「売り切れ」を選ぶと売れた価格だけになります。' },
       { label:'Google(買取価格)', url:`https://www.google.com/search?q=${encodeURIComponent((kw||jan)+' 買取価格')}` }
     ];
   } else {
     const janQ = jan ? encodeURIComponent(jan) : q;
     links = [
-      { label:'メルカリ(売切)', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out` },
+      { label:'メルカリ(売切)', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out`,
+        hint:'このリンクは売り切れ済みだけに絞ってあります。商品写真に「SOLD」の帯が付いているものが実際に売れた価格です。' },
+      { label:'オークファン', url:`https://aucfan.com/search1/q-${q}/`,
+        hint:'一覧に出る価格はすべて「過去に売れた（落札された）」実績です。新しい順に上から見ればOKです。' },
+      { label:'Yahoo!フリマ', url:`https://paypayfleamarket.yahoo.co.jp/search/${q}`,
+        hint:'このリンクは販売中も含めた通常検索です。開いたら「販売状況」の絞り込みで「売り切れ」を選ぶと売れた価格だけになります。' },
       { label:'Amazon', url:`https://www.amazon.co.jp/s?k=${q}` },
       { label:'Google(最安値)', url:`https://www.google.com/search?q=${encodeURIComponent((jan||kw)+' 最安値')}` }
     ];
   }
-  wrap.innerHTML = links.map(l => `<a class="link-chip" href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`).join('');
+  wrap.innerHTML = links.map(l => `
+    <div class="link-card">
+      <a class="link-chip" href="${l.url}" target="_blank" rel="noopener">${l.label}</a>
+      ${l.hint ? `<small class="hint">${l.hint}</small>` : ''}
+    </div>
+  `).join('');
 }
 productNameEl.addEventListener('input', ()=>{ renderSearchLinks(); checkHistoryWarning(); });
 janCodeEl && janCodeEl.addEventListener('input', renderSearchLinks);
