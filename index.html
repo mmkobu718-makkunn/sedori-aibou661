@@ -468,23 +468,23 @@ function renderSearchLinks(){
   let links = [];
   if(currentMode === 'used'){
     links = [
-      { label:'メルカリ', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out`,
-        hint:'このリンクだけでは売り切れに絞り込まれません。開いたら絞り込み条件で「販売状況」→「売り切れのみ」を選んでください。' },
+      { label:'メルカリ', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out&item_types=mercari`,
+        hint:'「個人」の絞り込みは自動で入りますが、売り切れの絞り込みだけは反映されません。開いたら絞り込み条件で「販売状況」→「売り切れのみ」を選んでください。' },
       { label:'オークファン', url:`https://aucfan.com/search1/q-${q}/`,
         hint:'一覧に出るのは基本的に「過去に売れた（落札された）」実績です。ただし無料会員は表示件数と閲覧できる期間（目安6か月分）に制限があるため、古い相場は見られないことがあります。' },
-      { label:'Yahoo!フリマ', url:`https://paypayfleamarket.yahoo.co.jp/search/${q}`,
-        hint:'このリンクを開いた時点では「販売中」の商品しか出ません。絞り込みの「販売状況」で「売り切れ」にチェックを入れ直すと、売れた価格に切り替わります。' },
+      { label:'Yahoo!フリマ', url:`https://paypayfleamarket.yahoo.co.jp/search/${q}?itemStatus=sold`,
+        hint:'絞り込みの「販売状況」に「売り切れ」のチェックは自動で入りますが、一覧への反映は別です。開いたら絞り込みパネル内の「絞り込む」ボタンを押してください。' },
       { label:'Google(買取価格)', url:`https://www.google.com/search?q=${encodeURIComponent((kw||jan)+' 買取価格')}` }
     ];
   } else {
     const janQ = jan ? encodeURIComponent(jan) : q;
     links = [
-      { label:'メルカリ', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out`,
-        hint:'このリンクだけでは売り切れに絞り込まれません。開いたら絞り込み条件で「販売状況」→「売り切れのみ」を選んでください。' },
+      { label:'メルカリ', url:`https://jp.mercari.com/search?keyword=${q}&status=sold_out&item_types=mercari`,
+        hint:'「個人」の絞り込みは自動で入りますが、売り切れの絞り込みだけは反映されません。開いたら絞り込み条件で「販売状況」→「売り切れのみ」を選んでください。' },
       { label:'オークファン', url:`https://aucfan.com/search1/q-${q}/`,
         hint:'一覧に出るのは基本的に「過去に売れた（落札された）」実績です。ただし無料会員は表示件数と閲覧できる期間（目安6か月分）に制限があるため、古い相場は見られないことがあります。' },
-      { label:'Yahoo!フリマ', url:`https://paypayfleamarket.yahoo.co.jp/search/${q}`,
-        hint:'このリンクを開いた時点では「販売中」の商品しか出ません。絞り込みの「販売状況」で「売り切れ」にチェックを入れ直すと、売れた価格に切り替わります。' },
+      { label:'Yahoo!フリマ', url:`https://paypayfleamarket.yahoo.co.jp/search/${q}?itemStatus=sold`,
+        hint:'絞り込みの「販売状況」に「売り切れ」のチェックは自動で入りますが、一覧への反映は別です。開いたら絞り込みパネル内の「絞り込む」ボタンを押してください。' },
       { label:'Amazon', url:`https://www.amazon.co.jp/s?k=${q}` },
       { label:'Google(最安値)', url:`https://www.google.com/search?q=${encodeURIComponent((jan||kw)+' 最安値')}` }
     ];
